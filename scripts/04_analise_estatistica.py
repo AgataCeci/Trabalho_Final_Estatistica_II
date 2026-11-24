@@ -94,6 +94,189 @@ tabela_correlacoes = pd.DataFrame(resultados)
 print("\nRESULTADOS DAS CORRELAÇÕES")
 print(tabela_correlacoes.round(4).to_string(index=False))
 
+
+# ==========================================
+# 8.1 GERAR IMAGENS PNG DAS TABELAS
+# ==========================================
+
+# Criar pasta para armazenar as tabelas
+pasta_tabelas = pasta_graficos / "tabelas"
+pasta_tabelas.mkdir(parents=True, exist_ok=True)
+
+
+# Função para transformar uma tabela em imagem PNG
+def salvar_tabela_png(tabela, caminho, titulo, tamanho_fonte=8):
+
+    # Criar uma cópia para não alterar os dados originais
+    tabela_visual = tabela.copy()
+
+    # Formatar os valores numéricos
+    for coluna in tabela_visual.columns:
+
+        if pd.api.types.is_float_dtype(tabela_visual[coluna]):
+            tabela_visual[coluna] = tabela_visual[coluna].map(
+                lambda valor: f"{valor:.2f}" if pd.notna(valor) else ""
+            )
+
+        elif pd.api.types.is_integer_dtype(tabela_visual[coluna]):
+            tabela_visual[coluna] = tabela_visual[coluna].astype(str)
+
+    # Definir tamanho da imagem conforme a tabela
+    largura = max(12, len(tabela_visual.columns) * 2.2)
+    altura = max(3, len(tabela_visual) * 0.45 + 2)
+
+    fig, ax = plt.subplots(figsize=(largura, altura))
+
+    # Retirar os eixos
+    ax.axis("off")
+
+    # Título da tabela
+    ax.set_title(
+        titulo,
+        fontsize=13,
+        fontweight="bold",
+        pad=20
+    )
+
+    # Criar tabela
+    tabela_imagem = ax.table(
+        cellText=tabela_visual.values,
+        colLabels=tabela_visual.columns,
+        cellLoc="center",
+        loc="center"
+    )
+
+    # Ajustar aparência
+    tabela_imagem.auto_set_font_size(False)
+    tabela_imagem.set_fontsize(tamanho_fonte)
+    tabela_imagem.scale(1, 1.6)
+
+    # Destacar os cabeçalhos
+    for (linha, coluna), celula in tabela_imagem.get_celld().items():
+
+        if linha == 0:
+            celula.set_text_props(weight="bold")
+
+    plt.tight_layout()
+
+    # Salvar imagem
+    plt.savefig(
+        caminho,
+        dpi=300,
+        bbox_inches="tight",
+        facecolor="white"
+    )
+
+    plt.close()
+
+
+# ------------------------------------------
+# TABELA 1: VARIACOES ANUAIS
+# ------------------------------------------
+
+tabela_variacoes = df[[
+    "ANO",
+    "CRESCIMENTO_PIB_PERCENTUAL",
+    "CRESCIMENTO_PIB_PER_CAPITA_PERCENTUAL",
+    "VARIACAO_PUBLICO_BRASILEIRO_PERCENTUAL",
+    "VARIACAO_PUBLICO_ESTRANGEIRO_PERCENTUAL",
+    "VARIACAO_PARTICIPACAO_NACIONAL_PONTOS"
+]].copy()
+
+tabela_variacoes = tabela_variacoes.rename(columns={
+    "ANO": "Ano",
+    "CRESCIMENTO_PIB_PERCENTUAL": "Crescimento PIB (%)",
+    "CRESCIMENTO_PIB_PER_CAPITA_PERCENTUAL": "Crescimento PIB per capita (%)",
+    "VARIACAO_PUBLICO_BRASILEIRO_PERCENTUAL": "Variacao publico brasileiro (%)",
+    "VARIACAO_PUBLICO_ESTRANGEIRO_PERCENTUAL": "Variacao publico estrangeiro (%)",
+    "VARIACAO_PARTICIPACAO_NACIONAL_PONTOS": "Variacao participacao nacional (p.p.)"
+})
+
+salvar_tabela_png(
+    tabela_variacoes,
+    pasta_tabelas / "tabela_variacoes_anuais.png",
+    "Variacoes anuais das variaveis (2010-2025)",
+    tamanho_fonte=7
+)
+
+
+# ------------------------------------------
+# TABELA 2: ESTATISTICAS DESCRITIVAS
+# ------------------------------------------
+
+variaveis_descritivas = [
+    "CRESCIMENTO_PIB_PERCENTUAL",
+    "CRESCIMENTO_PIB_PER_CAPITA_PERCENTUAL",
+    "VARIACAO_PUBLICO_BRASILEIRO_PERCENTUAL",
+    "VARIACAO_PUBLICO_ESTRANGEIRO_PERCENTUAL",
+    "PARTICIPACAO_NACIONAL_PERCENTUAL",
+    "VARIACAO_PARTICIPACAO_NACIONAL_PONTOS"
+]
+
+tabela_descritiva = df[variaveis_descritivas].describe().T.reset_index()
+
+tabela_descritiva = tabela_descritiva.rename(columns={
+    "index": "Variavel",
+    "CRESCIMENTO_PIB_PERCENTUAL": "Crescimento PIB",
+    "CRESCIMENTO_PIB_PER_CAPITA_PERCENTUAL": "Crescimento PIB per capita",
+    "VARIACAO_PUBLICO_BRASILEIRO_PERCENTUAL": "Variacao publico brasileiro",
+    "VARIACAO_PUBLICO_ESTRANGEIRO_PERCENTUAL": "Variacao publico estrangeiro",
+    "PARTICIPACAO_NACIONAL_PERCENTUAL": "Participacao nacional",
+    "VARIACAO_PARTICIPACAO_NACIONAL_PONTOS": "Variacao participacao nacional"
+})
+
+salvar_tabela_png(
+    tabela_descritiva,
+    pasta_tabelas / "tabela_estatisticas_descritivas.png",
+    "Estatisticas descritivas das variaveis",
+    tamanho_fonte=8
+)
+
+
+# ------------------------------------------
+# TABELA 3: RESULTADOS DAS CORRELACOES
+# ------------------------------------------
+
+tabela_correlacoes_png = tabela_correlacoes.copy()
+
+tabela_correlacoes_png = tabela_correlacoes_png.rename(columns={
+    "INDICADOR_ECONOMICO": "Indicador economico",
+    "INDICADOR_CINEMA": "Indicador cinematografico",
+    "OBSERVACOES": "N",
+    "PEARSON": "Pearson (r)",
+    "P_VALOR_PEARSON": "Valor-p Pearson",
+    "SPEARMAN": "Spearman",
+    "P_VALOR_SPEARMAN": "Valor-p Spearman"
+})
+
+# Simplificar os nomes para melhorar a leitura
+tabela_correlacoes_png["Indicador economico"] = (
+    tabela_correlacoes_png["Indicador economico"].replace({
+        "CRESCIMENTO_PIB_PERCENTUAL": "Crescimento do PIB",
+        "CRESCIMENTO_PIB_PER_CAPITA_PERCENTUAL": "Crescimento do PIB per capita"
+    })
+)
+
+tabela_correlacoes_png["Indicador cinematografico"] = (
+    tabela_correlacoes_png["Indicador cinematografico"].replace({
+        "VARIACAO_PUBLICO_BRASILEIRO_PERCENTUAL": "Variacao publico brasileiro",
+        "VARIACAO_PUBLICO_ESTRANGEIRO_PERCENTUAL": "Variacao publico estrangeiro",
+        "VARIACAO_PARTICIPACAO_NACIONAL_PONTOS": "Variacao participacao nacional"
+    })
+)
+
+salvar_tabela_png(
+    tabela_correlacoes_png,
+    pasta_tabelas / "tabela_correlacoes.png",
+    "Correlacoes entre economia e mercado cinematografico",
+    tamanho_fonte=8
+)
+
+
+print("\nIMAGENS DAS TABELAS GERADAS COM SUCESSO!")
+print(f"Tabelas salvas em: {pasta_tabelas}")
+
+
 # 9. Salvar as tabelas
 df.to_csv(
     pasta_dados / "base_com_variacoes.csv",
